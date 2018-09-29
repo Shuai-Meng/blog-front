@@ -14,8 +14,8 @@
     <div align="right">历史阅读量：<span id="visit_article"></span><div>
     <script>
         document.ready = function() {
-            $.post("http://localhost:8080/addPostVisit", {postId: <%= post.abbrlink %>}, function(data) {
-		         $("#visit_article").text(data - 1);
+            $.post("http://23.105.221.195:8080/addPostVisit", {postId: <%= post.abbrlink %>}, function(data) {
+		         $("#visit_article").text(data);
 			});
         };
     </script>

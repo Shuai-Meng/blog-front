@@ -6,4 +6,4 @@ node_modules/
 public/
 .deploy*/
 public/
-sources/_post/
+.idea/

@@ -135,7 +135,7 @@
     $container.removeClass('mobile-nav-on');
   });
 
-    $.get("http://localhost:8080/getBlogVisit", function(data) {
+    $.get("http://23.105.221.195:8080/getBlogVisit", function(data) {
         $("#visit_all").text(data);
     })
 })(jQuery);
