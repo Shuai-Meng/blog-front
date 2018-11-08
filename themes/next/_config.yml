@@ -57,6 +57,8 @@ favicon:
 # Set rss to specific value if you have burned your feed already.
 rss:
 
+keywords: mengshuai,java,linux,mysql,redis,tomcat,技术，分布式,spring,springboot,springmvc
+
 footer:
   # Specify the date when the site was setup.
   # If not defined, current year will be used.
@@ -100,11 +102,11 @@ footer:
 canonical: true
 
 # Change headers hierarchy on site-subtitle (will be main site description) and on all post/pages titles for better SEO-optimization.
-seo: false
+seo: true
 
 # If true, will add site-subtitle to index page, added in main hexo config.
 # subtitle: Subtitle
-index_with_subtitle: false
+index_with_subtitle: true
 
 
 # ---------------------------------------------------------------
@@ -158,22 +160,20 @@ social:
   GitHub: https://github.com/Shuai-Meng || github
   E-Mail: mailto:mengshuaicalendr@gmail.com || envelope
   #Google: https://plus.google.com/yourname || google
-  #Twitter: https://twitter.com/yourname || twitter
   #FB Page: https://www.facebook.com/yourname || facebook
-  #VK Group: https://vk.com/yourname || vk
-  #StackOverflow: https://stackoverflow.com/yourname || stack-overflow
-  #YouTube: https://youtube.com/yourname || youtube
-  #Instagram: https://instagram.com/yourname || instagram
-  #Skype: skype:yourname?call|chat || skype
+  StackOverflow: https://stackoverflow.com/users/8630262 || stack-overflow
+  知乎专栏: https://zhuanlan.zhihu.com/c_1042806937905266688 || globe
+  头条号: https://www.toutiao.com/c/user/5516059911 || globe
+  简书: https://www.jianshu.com/u/6022549b794c || globe
 
 social_icons:
   enable: true
   icons_only: false
-  transition: false
+  transition: true
   # Dependencies: exturl: true in Tags Settings section below.
   # To encrypt links above use https://www.base64encode.org
   # Example encoded link: `GitHub: aHR0cHM6Ly9naXRodWIuY29tL3RoZW1lLW5leHQ= || github`
-  exturl: false
+  exturl: true
 
 # Follow me on GitHub banner in right-top corner.
 # Usage: `permalink || title`
