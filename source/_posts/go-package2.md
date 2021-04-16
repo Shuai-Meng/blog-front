@@ -1,8 +1,9 @@
 ---
 title: Golang基础：源码与包（2）
-date: 2021-04-15 07:36:44
 tags: golang
 categories: 技术
+abbrlink: 35349
+date: 2021-04-15 07:36:44
 ---
 
 #### Golang源代码的分类

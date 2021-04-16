@@ -32,7 +32,6 @@ skip_render:
 new_post_name: :title.md # File name of new posts
 default_layout: post
 titlecase: false # Transform title into titlecase
-external_link: true # Open external links in new tab
 filename_case: 0
 render_drafts: true
 post_asset_folder: true
@@ -43,6 +42,8 @@ highlight:
   line_number: true
   auto_detect: false
   tab_replace:
+external_link: 
+  enable: true # Open external links in new tab
   
 # Home page setting
 # path: Root path for your blogs index page. (default = '')
