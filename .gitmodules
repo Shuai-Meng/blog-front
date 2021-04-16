@@ -1,0 +1,6 @@
+[submodule "themes/next"]
+	path = themes/next
+	url = https://github.com/Shuai-Meng/hexo-theme-next
+[submodule "themes/Casper"]
+	path = themes/Casper
+	url = https://github.com/Shuai-Meng/Casper
