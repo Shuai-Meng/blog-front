@@ -68,7 +68,7 @@ date: 2021-04-15 07:36:44
 4. 当然，源文件本身不需要命名为“main.go”，也可以叫“cmd.go ”之类的；而最终生成的可执行文件默认与（第一个）源文件名字或目录名字相同，但也可以指定名称。如下：
 
    ```shell
-➜   cat cmd.go 
+   ➜   cat cmd.go 
    package main
    
    func main() {}
@@ -93,8 +93,6 @@ date: 2021-04-15 07:36:44
    ```
    
    可以看到，cmd.go和other.go睡在前面，可执行文件的名字就跟谁相同；编译目录的话，就是目录的名字；可以使用“-o”参数定制可执行文件的名称。
-
-
 
 #### 库源码文件
 
@@ -138,13 +136,93 @@ date: 2021-04-15 07:36:44
    bin pkg src
    ```
 
-   虽然这个目录结构知识某种约定而不是强制的，但是有些go命令确实依赖这种约定，目的就是为了执行更有效率，省去了每次都要指定目录的麻烦。有了标准路径，只要将项目根目录加到GOPATH中，编译的时候会自动地：去src目录寻找源码；将编译生成的可执行文件存放到bin下；编译生成的库文件存放到pkg下。
+   虽然这个目录结构知识某种约定而不是强制的，但是有些go命令确实依赖这种约定，目的就是为了执行更有效率，省去了每次都要指定目录的麻烦。有了标准路径，只要将项目根目录加到GOPATH中，编译的时候会自动地：去src目录寻找源码；将编译生成的可执行文件存放到bin下；将编译生成的库文件存放到pkg下。
 
-3. go install
 
-   在之前的例子中，工程根目录没有被加进GOPATH中，但是“go build”依然可以正常运作，这说明“go build”真的只是单纯的编译，是Golang的基本和底层功能。
-   
-   “go install”依赖于“go build”，功能更丰富，但是其正常运作就需要一些额外的工程约定了。
+在之前的例子中，工程根目录没有被加进GOPATH中，但是“go build”依然可以正常运作，这说明“go build”真的只是单纯的编译，是Golang的基本和底层功能。但是，将工程根目录加入到GOPATH之前，“go install”是不会起作用的，如下：
+
+```shell
+➜   pwd
+/Users/mengshuai/projects/tmp
+➜   ls
+bin pkg src
+➜   go env GOPATH
+/Users/mengshuai/programs/go
+➜   cat src/other/other.go 
+package other
+
+func other() {}
+➜   go install src/other/other.go
+➜   ls pkg 
+➜  
+```
+
+工程根目录是“/Users/mengshuai/projects/tmp”，根目录下是标准的Go工程目录结构，但是根目录不在GOPATH中，于是go install之后完全没有任何输出。
+
+把根目录加入到GOPATH后，如下：
+
+```shell
+➜   go env GOPATH
+/Users/mengshuai/programs/go:/Users/mengshuai/projects/tmp
+➜   go install src/other/other.go 
+➜   ls pkg 
+➜   go install other
+➜   ls pkg 
+darwin_amd64
+➜   ls pkg/darwin_amd64 
+other.a
+```
+
+可以看到，此时pkg目录下正常生成了所谓的“库文件”，以“.a”结尾。这里需要注意两点：
+
+1. 对于库源码文件，go install的编译单位是包，而不能是单个文件，上述代码已经证明单个文件不会有任何输出
+2. 编译后的库文件也没有直接放在pkg目录下，而是放在一个叫“darwin_amd64”的子目录中，子目录的命名其实就是“\$GOOS_$GOARCH”
+
+对于命令源码文件，go install同样会生成可执行文件，同时还会把可执行文件移动到bin目录中，如下：
+
+```shell
+➜   cat src/pack/cmd.go 
+package main
+
+func main() {}
+➜   go install src/pack/cmd.go
+go install: no install location for .go files listed on command line (GOBIN not set)
+➜   go install pack
+➜   ls bin 
+pack
+```
+
+这里同样有几点需要注意：
+
+1. 命令源码文件所在的目录名pack和声明的包名main不一致，对于go install而言，使用的其实是目录名（这里体现出了包名和目录名一致的好处——不容易混）；
+
+2. go install后面的目录名，既没有绝对路径也没有相对路径的标识，这是因为go install会自动去GOPATH环境变量所代表的路径下的src子目录中查询；可以理解为“go install”自动在参数目录前加上了“GOPATH/src”；
+
+3. go install单独编译某个命令源码文件似乎也行不通，报错信息是“GOBIN not set”，下面对此进行探究
+
+   ```shell
+   ➜   export GOBIN="/Users/mengshuai/programs/go/bin"
+   ➜   go env GOBIN
+   /Users/mengshuai/programs/go/bin
+   ➜   rm -f bin/pack 
+   ➜   go install src/pack/cmd.go
+   ➜   ls bin 
+   ➜   ls $GOBIN
+   cmd
+   ➜   rm -f $GOBIN/cmd 
+   ➜   go install pack           
+   ➜   ls bin 
+   ➜   ls $GOBIN
+   pack
+   ```
+
+   首先将GOBIN环境变量指向全局GOPATH的bin子目录；然后删除原来的可执行文件；再次执行“go install”，发现可以成功，但是可执行文件没有被移动到工程根目录的bin下，而是直接放在了GOBIN中。
+
+   这说明go install可以安装单独某个命令源码文件，前提是设置了GOBIN环境变量，而且可执行文件会置于GOBIN中；当然main包的文件一般就是集中在一个文件中，如果分散在多个文件的话，也是要以包为单位进行“go install”的；
+
+   另外一点，当设置了GOBIN后，会覆盖工程根目录下的bin目录，可执行文件总会放到GOBIN中；
+
+   最后，可执行文件的名字是以go install的参数命名的，可以通过“-o”参数定制。
 
 #### 测试源码文件
 
