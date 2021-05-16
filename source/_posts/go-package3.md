@@ -28,7 +28,149 @@ import的语法很简单，就是用一个空格隔开import关键字本身和�
 
 当需要引用多个模块时，也可以像下面那样，用括号将多个分行的包路径包含起来，不必每行写一个“import”关键字。
 
-而本篇文章的关键就是包的路径如何定义。
+需要注意的是，import的是包的路径名称，而不是包名称，二者可以是不一致的；但是在代码中又必须使用包名，所以二者保持一致还是有好处的。
+
+```shell
+➜   pwd
+/Users/mengshuai/projects/tmp/src
+➜   cat pack/cmd.go
+package main
+
+import "test"
+
+func main() {
+	other.Other()
+}
+➜   cat test/other.go 
+package other
+
+func Other() {}
+➜   go install pack   
+➜   
+```
+
+包other在目录test中，cmd.go引入的时候用的也是“test”，而非“other”；代码中使用other包元素的时候，却只能用“other”，如果用“test”会报错：
+
+```shell
+➜   go install pack
+# pack
+pack/cmd.go:3:8: imported and not used: "test" as other
+pack/cmd.go:6:2: undefined: test
+```
 
 ##### 包的路径
 
+包的路径实际上并不是在文件系统中的绝对路径，而只是绝对路径的后半部分，前半部分会被编译工具自动拼装——前半部分就是可能存放依赖包的位置。
+
+```shell
+➜   echo $GOPATH
+/Users/mengshuai/programs/go:/Users/mengshuai/projects/tmp
+➜   cat other/other.go
+package other
+
+import "test"
+
+func other() {}
+➜   go install other/other.go 
+other/other.go:3:8: cannot find package "test" in any of:
+	/usr/local/opt/go@1.12/libexec/src/test (from $GOROOT)
+	/Users/mengshuai/programs/go/src/test (from $GOPATH)
+	/Users/mengshuai/projects/tmp/src/test
+
+```
+
+代码中故意import了一个不存在的“test”包，然后编译报错了。根据报错信息，编译工具先去了\$GOROOT再去了\$GOPATH中寻找包体，且**\$GOPATH的搜索顺序是从后往前的**。
+
+拼装路径的时候，也用到了Golang的工程目录约定，在\$GOROOT或$GOPATH后面添加了“src/”，再接包所在的直接目录。但是这里拼接“src”而不是“pkg”，是因为没有找到相应的二进制库文件，所以打算从源码开始编译；否则直接从“pkg”中寻找就可以了。下面验证一下：
+
+```shell
+➜   cat src/other/other.go 
+package other
+
+import "foo"
+
+func Other() {
+	foo.Main()
+}
+➜   cat src/foo/foo.go 
+package foo
+
+func Main() {
+}
+➜   ls pkg/darwin_amd64
+➜   go install -v -x other   
+WORK=/var/folders/c6/9j2_kn4x54bd2804lr0jbh8h0000gp/T/go-build366818321
+foo
+mkdir -p $WORK/b002/
+cat >$WORK/b002/importcfg << 'EOF' # internal
+# import config
+EOF
+cd /Users/mengshuai/projects/tmp/src/foo
+/usr/local/opt/go@1.12/libexec/pkg/tool/darwin_amd64/compile -o $WORK/b002/_pkg_.a -trimpath $WORK/b002 -p foo -complete -buildid G5GykchxTZhfsFM9hggR/G5GykchxTZhfsFM9hggR -goversion go1.12.17 -D "" -importcfg $WORK/b002/importcfg -pack -c=4 ./foo.go
+/usr/local/opt/go@1.12/libexec/pkg/tool/darwin_amd64/buildid -w $WORK/b002/_pkg_.a # internal
+cp $WORK/b002/_pkg_.a /Users/mengshuai/Library/Caches/go-build/03/03235c6fe222835d860ad6bfec706a15d5724280635e318dce918acc9de61b33-d # internal
+other
+mkdir -p $WORK/b001/
+cat >$WORK/b001/importcfg << 'EOF' # internal
+# import config
+packagefile foo=$WORK/b002/_pkg_.a
+EOF
+cd /Users/mengshuai/projects/tmp/src/other
+/usr/local/opt/go@1.12/libexec/pkg/tool/darwin_amd64/compile -o $WORK/b001/_pkg_.a -trimpath $WORK/b001 -p other -complete -buildid xwd5LMAP4ULcw7IZiMOg/xwd5LMAP4ULcw7IZiMOg -goversion go1.12.17 -D "" -importcfg $WORK/b001/importcfg -pack -c=4 ./other.go
+/usr/local/opt/go@1.12/libexec/pkg/tool/darwin_amd64/buildid -w $WORK/b001/_pkg_.a # internal
+cp $WORK/b001/_pkg_.a /Users/mengshuai/Library/Caches/go-build/0f/0f3f115ca937e2bf6ae7840e78350195175b6f48e24d1b742e8f52874e031b67-d # internal
+mkdir -p /Users/mengshuai/projects/tmp/pkg/darwin_amd64/
+mv $WORK/b001/_pkg_.a /Users/mengshuai/projects/tmp/pkg/darwin_amd64/other.a
+rm -r $WORK/b001/
+➜   ls pkg/darwin_amd64
+other.a
+```
+
+other.go引用了foo.go的代码，当pkg目录下没有foo包的库文件时，安装other包会先去源代码目录寻找foo包并编译（“go install”的参数“-x -v”可以显示出编译过程）：
+
+“cd /Users/mengshuai/projects/tmp/src/foo”
+
+如果foo.a已经存在，则直接使用即可，不会再去重新编译foo包，除非foo的代码发生了改变。如下：
+
+```shell
+➜   go clean -cache
+➜   rm -rf pkg/darwin_amd64/*.a
+➜   go install -v -x foo  
+WORK=/var/folders/c6/9j2_kn4x54bd2804lr0jbh8h0000gp/T/go-build877130085
+foo
+mkdir -p $WORK/b001/
+cat >$WORK/b001/importcfg << 'EOF' # internal
+# import config
+EOF
+cd /Users/mengshuai/projects/tmp/src/foo
+/usr/local/opt/go@1.12/libexec/pkg/tool/darwin_amd64/compile -o $WORK/b001/_pkg_.a -trimpath $WORK/b001 -p foo -complete -buildid G5GykchxTZhfsFM9hggR/G5GykchxTZhfsFM9hggR -goversion go1.12.17 -D "" -importcfg $WORK/b001/importcfg -pack -c=4 ./foo.go
+/usr/local/opt/go@1.12/libexec/pkg/tool/darwin_amd64/buildid -w $WORK/b001/_pkg_.a # internal
+cp $WORK/b001/_pkg_.a /Users/mengshuai/Library/Caches/go-build/03/03235c6fe222835d860ad6bfec706a15d5724280635e318dce918acc9de61b33-d # internal
+mkdir -p /Users/mengshuai/projects/tmp/pkg/darwin_amd64/
+mv $WORK/b001/_pkg_.a /Users/mengshuai/projects/tmp/pkg/darwin_amd64/foo.a
+rm -r $WORK/b001/
+➜   go install -v -x other
+WORK=/var/folders/c6/9j2_kn4x54bd2804lr0jbh8h0000gp/T/go-build164428318
+other
+mkdir -p $WORK/b001/
+cat >$WORK/b001/importcfg << 'EOF' # internal
+# import config
+packagefile foo=/Users/mengshuai/projects/tmp/pkg/darwin_amd64/foo.a
+EOF
+cd /Users/mengshuai/projects/tmp/src/other
+/usr/local/opt/go@1.12/libexec/pkg/tool/darwin_amd64/compile -o $WORK/b001/_pkg_.a -trimpath $WORK/b001 -p other -complete -buildid xwd5LMAP4ULcw7IZiMOg/xwd5LMAP4ULcw7IZiMOg -goversion go1.12.17 -D "" -importcfg $WORK/b001/importcfg -pack -c=4 ./other.go
+/usr/local/opt/go@1.12/libexec/pkg/tool/darwin_amd64/buildid -w $WORK/b001/_pkg_.a # internal
+cp $WORK/b001/_pkg_.a /Users/mengshuai/Library/Caches/go-build/0f/0f3f115ca937e2bf6ae7840e78350195175b6f48e24d1b742e8f52874e031b67-d # internal
+mkdir -p /Users/mengshuai/projects/tmp/pkg/darwin_amd64/
+mv $WORK/b001/_pkg_.a /Users/mengshuai/projects/tmp/pkg/darwin_amd64/other.a
+rm -r $WORK/b001/
+```
+
+使用“go clean -cache”清除编译缓存，并删除所有pkd目录下的库文件后，先安装foo包，那么在安装other包时，发现打印了这一行：
+“packagefile foo=/Users/mengshuai/projects/tmp/pkg/darwin_amd64/foo.a”
+
+说明此时没有去寻找源码。
+
+关于Golang编译缓存，可以参考[这里](https://tonybai.com/2018/02/17/some-changes-in-go-1-10/)。
+
+完。
