@@ -166,11 +166,47 @@ mv $WORK/b001/_pkg_.a /Users/mengshuai/projects/tmp/pkg/darwin_amd64/other.a
 rm -r $WORK/b001/
 ```
 
-使用“go clean -cache”清除编译缓存，并删除所有pkd目录下的库文件后，先安装foo包，那么在安装other包时，发现打印了这一行：
+使用“go clean -cache”清除编译缓存，并删除所有pkg目录下的库文件后，先安装foo包，那么在安装other包时，发现打印了这一行：
 “packagefile foo=/Users/mengshuai/projects/tmp/pkg/darwin_amd64/foo.a”
 
-说明此时没有去寻找源码。
+说明此时没有去寻找源码，直接引用了编译好的库文件。
 
 关于Golang编译缓存，可以参考[这里](https://tonybai.com/2018/02/17/some-changes-in-go-1-10/)。
+
+#### 下载第三方依赖：go get
+
+##### 原理
+
+pkg目录下的库文件不一定非得是自己写的代码，也可以是别人写好的。互联网的世界里，“拿来主义”是常态。我们可以很方便的使用别人分享出来的代码，只要简单的使用“go get”命令从指定的url获取即可。这些url一般是业界比较知名的代码仓库托管平台，比如github，其他支持的平台包括：Google Code、BitBucket和Launchpad。
+
+在内部实际上分成了两步操作：第一步是下载源码包，第二步是执行 go install。下载源码包的 go 工具会自动根据不同的域名调用不同的源码工具，对应关系如下：
+
+BitBucket (Mercurial Git)
+GitHub (Git)
+Google Code Project Hosting (Git, Mercurial, Subversion)
+Launchpad (Bazaar)
+
+所以需要提前安装好git等版本管理工具。
+
+##### 使用参数
+
+​    示例：go get github.com/davyxu/cellnet
+
+- -d 只下载不安装
+- -f 只有在你包含了 -u 参数的时候才有效，不让 -u 去验证 import 中的每一个都已经获取了，这对于本地 fork 的包特别有用
+- -fix 在获取源码之后先运行 fix，然后再去做其他的事情
+- -t 同时也下载需要为运行测试所需要的包
+- -u 强制使用网络去更新包和它的依赖包
+- -v 显示执行的命令
+
+##### 私有仓库
+
+假设远程仓库的地址是：git.garena.com/
+
+需要在~/.gitconfig中添加以下配置：
+
+​    [url "[ssh://gitlab@git.garena.com:2222/](ssh://gitlab@git.garena.com:2222/)"]                           
+
+​        insteadOf = https://git.garena.com/
 
 完。
